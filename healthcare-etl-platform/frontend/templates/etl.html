@@ -1,0 +1,185 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row mt-4">
+    <div class="col-12 mb-4">
+        <h2>Panel de Control ETL</h2>
+        <p class="text-muted">Administración y monitoreo del pipeline de datos clínicos.</p>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <!-- Ejecución Manual -->
+    <div class="col-md-6 mb-3">
+        <div class="card shadow-sm h-100">
+            <div class="card-body">
+                <h5 class="card-title">Ejecución del Dataset Predeterminado</h5>
+                <p class="card-text">Ejecuta el pipeline ETL (Extract, Transform, Load) sobre el archivo Excel principal de 1800 registros.</p>
+                <button id="btnRunEtl" class="btn btn-primary-custom" onclick="runETL()">Ejecutar ETL</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Subida Externa -->
+    <div class="col-md-6 mb-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-body">
+                <h5 class="card-title">Carga Manual (CSV/Excel)</h5>
+                <form id="uploadForm" class="d-flex align-items-center mt-3">
+                    <input class="form-control me-2 form-control-custom" type="file" id="etlFile" accept=".csv, .xlsx" required>
+                    <button class="btn btn-primary-custom text-nowrap" type="submit">Subir y Procesar</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Historial ETL -->
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">Historial de Ejecuciones ETL</h5>
+                <div class="table-responsive">
+                    <table class="table table-custom align-middle">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Usuario</th>
+                                <th>Registros Leídos</th>
+                                <th>Registros Limpios</th>
+                                <th>Duplicados</th>
+                                <th>Tiempo (s)</th>
+                                <th>Estado</th>
+                                <th>Errores</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historialBody">
+                            <tr><td colspan="8" class="text-center">Cargando...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Info -->
+<div class="modal fade" id="infoModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="infoModalTitle">Información</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="infoModalBody"></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const modal = new bootstrap.Modal(document.getElementById('infoModal'));
+    
+    function showModal(title, message) {
+        document.getElementById('infoModalTitle').textContent = title;
+        document.getElementById('infoModalBody').textContent = message;
+        modal.show();
+    }
+
+    async function loadHistorial() {
+        try {
+            const res = await fetchWithAuth(`${API_BASE}/etl/historial/`);
+            const tbody = document.getElementById('historialBody');
+            if (res.ok) {
+                const logs = await res.json();
+                tbody.innerHTML = '';
+                if (logs.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="8" class="text-center">No hay registros ETL.</td></tr>';
+                    return;
+                }
+                logs.forEach(log => {
+                    const badge = log.estado === 'Exitoso' ? 'bg-success' : 'bg-danger';
+                    const errorIcon = log.errores ? '<span class="text-warning">⚠</span>' : '<span class="text-success">✓</span>';
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${new Date(log.fecha).toLocaleString()}</td>
+                            <td>${log.usuario_username || 'Sistema'}</td>
+                            <td>${log.registros_procesados}</td>
+                            <td>${log.registros_limpios}</td>
+                            <td>${log.duplicados_eliminados || 0}</td>
+                            <td>${log.tiempo_ejecucion.toFixed(2)}</td>
+                            <td><span class="badge ${badge}">${log.estado}</span></td>
+                            <td class="text-center" title="${log.errores || 'Sin errores'}">${errorIcon}</td>
+                        </tr>
+                    `;
+                });
+            }
+        } catch (error) {
+            console.error('Error loading historial', error);
+        }
+    }
+
+    async function runETL() {
+        const btn = document.getElementById('btnRunEtl');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Ejecutando...';
+        try {
+            const res = await fetchWithAuth(`${API_BASE}/etl/run/`, { method: 'POST' });
+            const data = await res.json();
+            if (res.ok) {
+                showModal('Éxito', data.message || 'Proceso ETL completado con éxito.');
+                loadHistorial();
+            } else {
+                showModal('Error', data.detail || 'Fallo en la ejecución del ETL.');
+            }
+        } catch (error) {
+            showModal('Error', 'Fallo de conexión.');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = 'Ejecutar ETL';
+        }
+    }
+
+    document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const fileInput = document.getElementById('etlFile');
+        const file = fileInput.files[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const btn = e.target.querySelector('button');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Subiendo...';
+
+        try {
+            // Nota: fetchWithAuth no debe incluir 'Content-Type' para FormData, fetch lo setea automáticamente con boundary
+            const res = await fetchWithAuth(`${API_BASE}/etl/upload/`, {
+                method: 'POST',
+                body: formData
+            });
+            const data = await res.json();
+            if (res.ok) {
+                showModal('Éxito', data.message || 'Archivo procesado con éxito.');
+                fileInput.value = '';
+                loadHistorial();
+            } else {
+                showModal('Error', data.detail || 'Fallo en el procesamiento del archivo.');
+            }
+        } catch (error) {
+            showModal('Error', 'Fallo de conexión.');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = 'Subir y Procesar';
+        }
+    });
+
+    document.addEventListener('DOMContentLoaded', loadHistorial);
+</script>
+{% endblock %}

@@ -1,0 +1,220 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row mt-4">
+    <div class="col-12 mb-4">
+        <h2>Dashboard Analítico</h2>
+        <p class="text-muted">Resumen global de los pacientes clínicos procesados.</p>
+    </div>
+</div>
+
+<!-- KPI Cards -->
+<div class="row mb-4" id="kpi-container">
+    <div class="col-md-3">
+        <div class="card kpi-card-medical kpi-border-total p-4 text-center h-100">
+            <span class="kpi-icon">👥</span>
+            <h5 class="kpi-title">Total Pacientes</h5>
+            <h2 id="kpi-total" class="kpi-number">-</h2>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card kpi-card-medical kpi-border-critico p-4 text-center h-100">
+            <span class="kpi-icon">🚨</span>
+            <h5 class="kpi-title">Pacientes Críticos</h5>
+            <h2 id="kpi-criticos" class="kpi-number">-</h2>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card kpi-card-medical kpi-border-hiper p-4 text-center h-100">
+            <span class="kpi-icon">💉</span>
+            <h5 class="kpi-title">Hipertensos</h5>
+            <h2 id="kpi-hipertensos" class="kpi-number">-</h2>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card kpi-card-medical kpi-border-diab p-4 text-center h-100">
+            <span class="kpi-icon">🩺</span>
+            <h5 class="kpi-title">Diabéticos</h5>
+            <h2 id="kpi-diabeticos" class="kpi-number">-</h2>
+        </div>
+    </div>
+</div>
+
+<!-- Charts -->
+<div class="row mb-4">
+    <div class="col-md-6 mb-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-body">
+                <h5 class="card-title">Distribución por Riesgo</h5>
+                <canvas id="riesgoChart"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 mb-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-body">
+                <h5 class="card-title">Distribución por Sexo</h5>
+                <canvas id="sexoChart"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 mb-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-body">
+                <h5 class="card-title">Distribución por Rangos de Edad</h5>
+                <canvas id="edadChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tabla Críticos -->
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">Últimos Pacientes Críticos</h5>
+                <div class="table-responsive">
+                    <table class="table table-custom align-middle">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Nombres</th>
+                                <th>Edad</th>
+                                <th>Sexo</th>
+                                <th>Diagnóstico</th>
+                                <th>Riesgo</th>
+                            </tr>
+                        </thead>
+                        <tbody id="criticosTableBody">
+                            <tr><td colspan="6" class="text-center">Cargando...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    async function loadDashboard() {
+        try {
+            // Cargar KPIs
+            const kpiRes = await fetchWithAuth(`${API_BASE}/analytics/kpis/`);
+            if (kpiRes.ok) {
+                const kpis = await kpiRes.json();
+                document.getElementById('kpi-total').textContent = kpis.total_pacientes;
+                document.getElementById('kpi-criticos').textContent = kpis.pacientes_criticos;
+                document.getElementById('kpi-hipertensos').textContent = kpis.hipertensos;
+                document.getElementById('kpi-diabeticos').textContent = kpis.diabeticos;
+            }
+
+            // Cargar Segmentación para Gráficas
+            const segRes = await fetchWithAuth(`${API_BASE}/analytics/segmentacion/`);
+            if (segRes.ok) {
+                const seg = await segRes.json();
+
+                // Gráfica de Barras: Riesgo
+                const riesgoCtx = document.getElementById('riesgoChart').getContext('2d');
+                new Chart(riesgoCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: Object.keys(seg.por_riesgo),
+                        datasets: [{
+                            label: 'Pacientes',
+                            data: Object.values(seg.por_riesgo),
+                            backgroundColor: ['#ef4444', '#f97316', '#eab308', '#22c55e'],
+                            borderRadius: 8
+                        }]
+                    },
+                    options: {
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        }
+                    }
+                });
+
+                // Gráfica de Torta: Sexo
+                const sexoCtx = document.getElementById('sexoChart').getContext('2d');
+                new Chart(sexoCtx, {
+                    type: 'pie',
+                    data: {
+                        labels: Object.keys(seg.por_sexo),
+                        datasets: [{
+                            data: Object.values(seg.por_sexo),
+                            backgroundColor: ['#3b82f6', '#a855f7']
+                        }]
+                    }
+                });
+
+                // Gráfica de Líneas: Edad
+                const edadCtx = document.getElementById('edadChart').getContext('2d');
+                const order_edad = ['0-18', '19-40', '41-60', '60+'];
+                const data_edad = order_edad.map(key => seg.por_rango_edad[key] || 0);
+
+                new Chart(edadCtx, {
+                    type: 'line',
+                    data: {
+                        labels: order_edad,
+                        datasets: [{
+                            label: 'Pacientes por Rango de Edad',
+                            data: data_edad,
+                            borderColor: '#6f42c1',
+                            tension: 0.1,
+                            fill: true,
+                            backgroundColor: 'rgba(111, 66, 193, 0.2)'
+                        }]
+                    }
+                });
+            }
+
+            // Cargar Tabla Críticos
+            // Fetch the patients, we need Riesgo=Critico
+            // The API handles search correctly if we pass exact matching, let's just fetch all or up to page size
+            // For demo, we use exact case as from DB, assuming 'Crítico'
+            const critRes = await fetchWithAuth(`${API_BASE}/etl/pacientes/?riesgo=Crítico`);
+            const tbody = document.getElementById('criticosTableBody');
+            
+            if (critRes.ok) {
+                const data = await critRes.json();
+                tbody.innerHTML = '';
+                const patients = data.results.slice(0, 10);
+                
+                if (patients.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="text-center">No hay pacientes críticos.</td></tr>';
+                } else {
+                    patients.forEach(p => {
+                        let badgeClass = 'badge-riesgo-bajo';
+                        if (p.riesgo_enfermedad === 'Crítico') badgeClass = 'badge-riesgo-critico';
+                        else if (p.riesgo_enfermedad === 'Alto') badgeClass = 'badge-riesgo-alto';
+                        else if (p.riesgo_enfermedad === 'Medio') badgeClass = 'badge-riesgo-medio';
+
+                        tbody.innerHTML += `
+                            <tr>
+                                <td>${p.id_paciente}</td>
+                                <td>${p.nombres} ${p.apellidos}</td>
+                                <td>${p.edad}</td>
+                                <td>${p.sexo}</td>
+                                <td>${p.diagnostico_preliminar}</td>
+                                <td><span class="badge ${badgeClass}">${p.riesgo_enfermedad}</span></td>
+                            </tr>
+                        `;
+                    });
+                }
+            } else {
+                // Podría ser 'Critico' sin tilde
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Error cargando pacientes críticos.</td></tr>';
+            }
+
+        } catch (error) {
+            console.error('Error loading dashboard', error);
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', loadDashboard);
+</script>
+{% endblock %}

@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row mt-4">
+    <div class="col-12 mb-4">
+        <h2>Reportes Globales</h2>
+        <p class="text-muted">Visualización de estadísticas y exportación global del sistema.</p>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card bg-light shadow-sm text-center p-3 h-100">
+            <h5>Total Pacientes</h5>
+            <h2 id="rep-total" class="text-primary">-</h2>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card bg-light shadow-sm text-center p-3 h-100">
+            <h5>Distribución por Riesgo</h5>
+            <ul class="list-unstyled mb-0 text-start ps-4" id="rep-riesgo">
+                <li>Cargando...</li>
+            </ul>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card bg-light shadow-sm text-center p-3 h-100">
+            <h5>Promedios Generales</h5>
+            <ul class="list-unstyled mb-0 text-start ps-4" id="rep-promedios">
+                <li>Cargando...</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card shadow-sm">
+            <div class="card-body text-center">
+                <h5 class="card-title mb-4">Exportación Global</h5>
+                <button class="btn btn-outline-secondary me-2 btn-export-csv" onclick="exportGlobal('csv')">📄 Exportar CSV</button>
+                <button class="btn btn-outline-success me-2 btn-export-excel" onclick="exportGlobal('excel')">📊 Exportar Excel</button>
+                <button class="btn btn-outline-danger btn-export-pdf" onclick="exportGlobal('pdf')">📑 Exportar PDF</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    async function loadReportes() {
+        try {
+            // Check Role
+            const rol = localStorage.getItem('rol');
+            if (rol === 'medico') {
+                document.querySelector('.container').innerHTML = '<h3 class="text-danger mt-5">Acceso denegado</h3>';
+                return;
+            }
+
+            // Load Stats
+            const statsRes = await fetchWithAuth(`${API_BASE}/analytics/kpis/`);
+            const segRes = await fetchWithAuth(`${API_BASE}/analytics/segmentacion/`);
+            const descRes = await fetchWithAuth(`${API_BASE}/analytics/estadisticas/`);
+
+            if (statsRes.ok) {
+                const data = await statsRes.json();
+                document.getElementById('rep-total').textContent = data.total_pacientes;
+            }
+
+            if (segRes.ok) {
+                const seg = await segRes.json();
+                const rList = document.getElementById('rep-riesgo');
+                rList.innerHTML = '';
+                for (const [r, count] of Object.entries(seg.por_riesgo)) {
+                    rList.innerHTML += `<li><strong>${r}:</strong> ${count}</li>`;
+                }
+            }
+
+            if (descRes.ok) {
+                const desc = await descRes.json();
+                const pList = document.getElementById('rep-promedios');
+                pList.innerHTML = `
+                    <li><strong>Edad:</strong> ${desc.edad ? desc.edad.media : '-'} años</li>
+                    <li><strong>Glucosa:</strong> ${desc.glucosa ? desc.glucosa.media : '-'} mg/dL</li>
+                    <li><strong>Presión Sistólica:</strong> ${desc.presion_sistolica ? desc.presion_sistolica.media : '-'} mmHg</li>
+                `;
+            }
+        } catch (error) {
+            console.error('Error loading reportes', error);
+        }
+    }
+
+    async function exportGlobal(formato) {
+        const url = `${API_BASE}/reportes/exportar/?formato=${formato}`;
+        try {
+            const token = localStorage.getItem('access_token');
+            const res = await fetch(url, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            if (res.ok) {
+                const blob = await res.blob();
+                const downloadUrl = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = downloadUrl;
+                const ext = formato === 'excel' ? 'xlsx' : formato;
+                a.download = `reporte_global.${ext}`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(downloadUrl);
+            } else {
+                alert('Error al exportar.');
+            }
+        } catch (error) {
+            console.error('Export error:', error);
+            alert('Error de conexión.');
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', loadReportes);
+</script>
+{% endblock %}

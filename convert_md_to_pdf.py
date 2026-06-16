@@ -8,22 +8,29 @@ sys.stdout.reconfigure(encoding='utf-8')
 ENTREGABLES_DIR = r"D:\proyecto16\healthcare-etl-platform\Entregables"
 
 CSS_STYLE = """
-@page { size: A4; margin: 2cm 2.2cm; }
-body { font-family: 'Helvetica','Arial',sans-serif; font-size: 10pt; line-height: 1.5; color: #1e293b; }
-h1 { font-size: 18pt; color: #1e3a8a; border-bottom: 3px solid #1e3a8a; padding-bottom: 6px; margin-top: 25px; }
-h2 { font-size: 14pt; color: #2563eb; margin-top: 20px; }
-h3 { font-size: 12pt; color: #334155; margin-top: 15px; }
-table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 8.5pt; }
-th { background-color: #1e3a8a; color: white; padding: 6px 8px; text-align: left; }
-td { border: 1px solid #cbd5e1; padding: 4px 8px; }
-tr:nth-child(even) { background-color: #f1f5f9; }
-code { background-color: #f1f5f9; padding: 1px 4px; font-size: 8pt; }
-pre { background-color: #1e293b; color: #e2e8f0; padding: 10px 12px; font-size: 7.5pt; }
-pre code { background: none; padding: 0; color: inherit; }
-blockquote { border-left: 3px solid #2563eb; padding: 6px 12px; background: #f0f4ff; margin: 12px 0; }
-ul, ol { padding-left: 22px; }
-li { margin-bottom: 3px; }
-p { margin: 6px 0; }
+@page { size: A4; margin: 2cm; }
+body { font-family: 'Helvetica','Arial',sans-serif; font-size: 11pt; line-height: 1.6; color: #000000; }
+h1 { font-size: 20pt; color: #1e3a8a; border-bottom: 2px solid #1e3a8a; padding-bottom: 6px; margin-top: 30px; margin-bottom: 15px; }
+h2 { font-size: 16pt; color: #2563eb; margin-top: 25px; margin-bottom: 10px; }
+h3 { font-size: 13pt; color: #000000; margin-top: 20px; margin-bottom: 8px; }
+h4 { font-size: 11pt; color: #000000; }
+p { margin: 8px 0; text-align: justify; }
+table { border-collapse: collapse; width: 100%; margin: 15px 0; font-size: 9pt; }
+th { background-color: #1e3a8a; color: #ffffff; padding: 8px 10px; text-align: left; font-weight: bold; }
+td { border: 1px solid #999999; padding: 6px 10px; }
+tr:nth-child(even) td { background-color: #f0f4ff; }
+code { font-family: 'Courier New', monospace; font-size: 9pt; }
+pre { background-color: #f5f5f5; padding: 12px 15px; border: 1px solid #cccccc; font-size: 8pt; line-height: 1.3; margin: 10px 0; page-break-inside: avoid; }
+pre code { background: none; padding: 0; }
+blockquote { border-left: 4px solid #2563eb; padding: 10px 15px; background: #f0f4ff; margin: 15px 0; }
+ul, ol { padding-left: 25px; margin: 8px 0; }
+li { margin-bottom: 4px; }
+a { color: #2563eb; text-decoration: none; }
+strong { color: #000000; }
+em { font-style: italic; }
+hr { border: none; border-top: 1px solid #cccccc; margin: 25px 0; }
+img { max-width: 100%; }
+.page-break { page-break-before: always; }
 """
 
 def convert_md_to_pdf(md_path, pdf_path):
@@ -38,7 +45,7 @@ def convert_md_to_pdf(md_path, pdf_path):
     full_html = f"""<!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="utf-8">
     <style>{CSS_STYLE}</style>
 </head>
 <body>
@@ -67,7 +74,7 @@ files = [
     "06_Evidencia_ML.md"
 ]
 
-print("=== Convirtiendo documentos a PDF ===\n")
+print("Convirtiendo documentos a PDF...\n")
 
 for fname in files:
     md_file = os.path.join(ENTREGABLES_DIR, fname)
@@ -76,8 +83,8 @@ for fname in files:
         try:
             convert_md_to_pdf(md_file, pdf_file)
         except Exception as e:
-            print("ERROR:", fname, str(e)[:100])
+            print("ERROR:", fname, "-", str(e)[:120])
     else:
-        print("NOT FOUND:", fname)
+        print("NO ENCONTRADO:", fname)
 
-print("\n=== Conversion completada ===")
+print("\nListo.")

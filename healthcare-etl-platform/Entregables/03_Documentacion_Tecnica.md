@@ -220,7 +220,7 @@ Para desplegar en plataformas como Render, Railway o Heroku:
 ```bash
 curl -X POST http://localhost:8000/api/auth/login/ \
   -H "Content-Type: application/json" \
-  -d '{"username": "admin", "password": "Admin1234"}'
+  -d '{"username": "admin", "password": "admin123"}'
 ```
 
 **2. Obtener KPIs:**

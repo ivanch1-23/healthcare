@@ -6,9 +6,9 @@ El sistema cuenta con **3 perfiles de usuario** con diferentes niveles de acceso
 
 | Rol | Usuario | Contraseña | Permisos |
 |---|---|---|---|
-| **Administrador** | `admin` | `Admin1234` | Acceso total: Dashboard, ETL, Pacientes, ML, Reportes, Usuarios, Admin Django |
-| **Analista** | *(creación manual)* | *(definida por admin)* | Procesamiento ETL, Dashboard, Reportes (sin ML ni Usuarios) |
-| **Médico** | *(creación manual)* | *(definida por admin)* | Dashboard, Pacientes, Predicción ML (sin ETL ni Reportes) |
+| **Administrador** | `admin` | `admin123` | Acceso total: Dashboard, ETL, Pacientes, ML, Reportes, Usuarios, Admin Django |
+| **Analista** | `analista` | `admin123` | Procesamiento ETL, Dashboard, Reportes (sin ML ni Usuarios) |
+| **Médico** | `medico` | `admin123` | Dashboard, Pacientes, Predicción ML (sin ETL ni Reportes) |
 
 ### Cómo Iniciar Sesión
 

@@ -51,7 +51,7 @@ Tras ejecutar el ETL sobre el dataset de 1800 registros:
 Para generar las capturas de pantalla como evidencia visual:
 
 ### 1. Módulo ETL (`/etl/`)
-- Ingresar con usuario `admin` / `Admin1234`
+- Ingresar con usuario `admin` / `admin123`
 - Navegar a la sección **ETL** en la barra de navegación
 - Hacer clic en **"Ejecutar ETL"**
 - **Capturar:** El modal de confirmación "Proceso ETL completado con éxito" y la tabla de historial mostrando la ejecución con estado "Exitoso" y 1800 registros

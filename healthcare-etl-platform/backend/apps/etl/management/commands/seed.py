@@ -15,7 +15,7 @@ class Command(BaseCommand):
         # 1. Crear Usuario Administrador
         User = get_user_model()
         admin_email = 'admin@healthanalytics.com'
-        admin_pass = 'Admin1234'
+        admin_pass = 'admin123'
         admin_username = 'admin'
 
         if not User.objects.filter(username=admin_username).exists():

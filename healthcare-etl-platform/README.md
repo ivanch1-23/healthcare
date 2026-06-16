@@ -61,7 +61,7 @@ graph TD;
    ```
 
 5. **Comando Mágico de Inicialización (Seed)**:
-   Prepara la base de datos con un usuario administrador por defecto (`admin@healthanalytics.com` / `Admin1234`), ejecuta el proceso ETL con el dataset proporcionado y entrena el modelo Random Forest automáticamente:
+   Prepara la base de datos con un usuario administrador por defecto (`admin` / `admin123`), ejecuta el proceso ETL con el dataset proporcionado y entrena el modelo Random Forest automáticamente:
    ```bash
    python manage.py seed
    ```

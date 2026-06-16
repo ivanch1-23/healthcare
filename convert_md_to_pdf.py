@@ -9,7 +9,7 @@ ENTREGABLES_DIR = r"D:\proyecto16\healthcare-etl-platform\Entregables"
 
 CSS_STYLE = """
 @page { size: A4; margin: 2cm; }
-body { font-family: 'Helvetica','Arial',sans-serif; font-size: 11pt; line-height: 1.6; color: #000000; }
+body { font-family: 'Helvetica','Arial',sans-serif; font-size: 11pt; line-height: 1.6; color: #000000; background-color: #ffffff; }
 h1 { font-size: 20pt; color: #1e3a8a; border-bottom: 2px solid #1e3a8a; padding-bottom: 6px; margin-top: 30px; margin-bottom: 15px; }
 h2 { font-size: 16pt; color: #2563eb; margin-top: 25px; margin-bottom: 10px; }
 h3 { font-size: 13pt; color: #000000; margin-top: 20px; margin-bottom: 8px; }
@@ -17,20 +17,18 @@ h4 { font-size: 11pt; color: #000000; }
 p { margin: 8px 0; text-align: justify; }
 table { border-collapse: collapse; width: 100%; margin: 15px 0; font-size: 9pt; }
 th { background-color: #1e3a8a; color: #ffffff; padding: 8px 10px; text-align: left; font-weight: bold; }
-td { border: 1px solid #999999; padding: 6px 10px; }
+td { border: 1px solid #999999; padding: 6px 10px; color: #000000; }
 tr:nth-child(even) td { background-color: #f0f4ff; }
-code { font-family: 'Courier New', monospace; font-size: 9pt; }
-pre { background-color: #f5f5f5; padding: 12px 15px; border: 1px solid #cccccc; font-size: 8pt; line-height: 1.3; margin: 10px 0; page-break-inside: avoid; }
-pre code { background: none; padding: 0; }
+code { font-family: 'Courier New', monospace; font-size: 9pt; color: #000000; background-color: #f5f5f5; padding: 1px 3px; }
+pre { background-color: #f5f5f5; padding: 12px 15px; border: 1px solid #cccccc; font-size: 8pt; line-height: 1.3; margin: 10px 0; color: #000000; }
+pre code { background: none; padding: 0; color: #000000; }
 blockquote { border-left: 4px solid #2563eb; padding: 10px 15px; background: #f0f4ff; margin: 15px 0; }
 ul, ol { padding-left: 25px; margin: 8px 0; }
-li { margin-bottom: 4px; }
+li { margin-bottom: 4px; color: #000000; }
 a { color: #2563eb; text-decoration: none; }
 strong { color: #000000; }
-em { font-style: italic; }
+em { font-style: italic; color: #000000; }
 hr { border: none; border-top: 1px solid #cccccc; margin: 25px 0; }
-img { max-width: 100%; }
-.page-break { page-break-before: always; }
 """
 
 def convert_md_to_pdf(md_path, pdf_path):
@@ -39,7 +37,7 @@ def convert_md_to_pdf(md_path, pdf_path):
 
     html_content = markdown.markdown(
         md_content,
-        extensions=['fenced_code', 'tables', 'codehilite', 'nl2br', 'sane_lists']
+        extensions=['fenced_code', 'tables', 'nl2br', 'sane_lists']
     )
 
     full_html = f"""<!DOCTYPE html>

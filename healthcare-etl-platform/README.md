@@ -67,10 +67,54 @@ graph TD;
    ```
 
 6. **Levantar el Servidor**:
-   ```bash
-   python manage.py runserver
-   ```
-   *Accede a [http://localhost:8000](http://localhost:8000) en tu navegador.*
+    ```bash
+    python manage.py runserver
+    ```
+    *Accede a [http://localhost:8000](http://localhost:8000) en tu navegador.*
+
+---
+
+## Render Deployment
+
+El proyecto queda preparado para desplegarse en Render con PostgreSQL, Gunicorn y WhiteNoise.
+
+### Soporte incluido
+
+- `render.yaml` en la raiz del repositorio para crear el servicio web y la base de datos.
+- `DATABASE_URL` en `backend/config/settings.py` para usar PostgreSQL de Render.
+- WhiteNoise para servir archivos estaticos en produccion.
+- Gunicorn como servidor WSGI.
+- `python backend/manage.py seed --skip-if-loaded` para crear usuarios base y cargar el dataset solo si no existen pacientes.
+
+### Pasos en Render
+
+1. En Render, selecciona **New +** y luego **Blueprint**.
+2. Conecta el repositorio `ivanch1-23/healthcare`.
+3. Render detectara `render.yaml` y creara:
+   - servicio web `healthcare-etl-platform`
+   - base de datos PostgreSQL `healthcare-etl-db`
+4. Antes o despues del primer deploy, configura estas variables con tu dominio real:
+   - `CSRF_TRUSTED_ORIGINS=https://tu-servicio.onrender.com`
+   - `CORS_ALLOWED_ORIGINS=https://tu-servicio.onrender.com`
+5. Ejecuta el deploy.
+
+### Comandos usados por Render
+
+Build command:
+```bash
+pip install -r backend/requirements.txt && python backend/manage.py collectstatic --noinput
+```
+
+Start command:
+```bash
+python backend/manage.py migrate && python backend/manage.py seed --skip-if-loaded && gunicorn --chdir backend config.wsgi:application --bind 0.0.0.0:$PORT
+```
+
+### Credenciales iniciales
+
+- `admin` / `admin123`
+- `analista` / `admin123`
+- `medico` / `admin123`
 
 ---
 

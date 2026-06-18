@@ -1,71 +1,129 @@
 import os
-from django.core.management.base import BaseCommand
-from django.contrib.auth import get_user_model
+
 from django.conf import settings
+from django.contrib.auth import get_user_model
+from django.core.management.base import BaseCommand
+
 from apps.etl.models import PacienteClinico, RegistroETL
 from apps.etl.services.etl_engine import ETLEngine
 from apps.ml.services.predictor import RiskPredictor
 
+
 class Command(BaseCommand):
-    help = 'Inicializa la base de datos con el usuario admin por defecto y corre el pipeline ETL con datos semilla.'
+    help = 'Inicializa usuarios base, carga el dataset clinico y entrena el modelo ML.'
+
+    def add_arguments(self, parser):
+        parser.add_argument(
+            '--force',
+            action='store_true',
+            help='Recarga pacientes e historial ETL aunque ya existan datos.',
+        )
+        parser.add_argument(
+            '--skip-if-loaded',
+            action='store_true',
+            help='No recarga el dataset si ya hay pacientes cargados.',
+        )
 
     def handle(self, *args, **options):
         self.stdout.write(self.style.WARNING('Iniciando proceso de seeding...'))
-        
-        # 1. Crear Usuario Administrador
-        User = get_user_model()
-        admin_email = 'admin@healthanalytics.com'
-        admin_pass = 'admin123'
-        admin_username = 'admin'
+        force = options['force']
+        skip_if_loaded = options['skip_if_loaded']
 
-        if not User.objects.filter(username=admin_username).exists():
-            admin_user = User.objects.create_superuser(
-                username=admin_username,
-                email=admin_email,
-                password=admin_pass,
-                rol='administrador'
-            )
-            self.stdout.write(self.style.SUCCESS(f'Usuario administrador creado: {admin_email} / {admin_pass}'))
-        else:
-            admin_user = User.objects.get(username=admin_username)
-            self.stdout.write(self.style.SUCCESS('Usuario administrador ya existe.'))
+        admin_user = self._crear_usuarios_base()
 
-        # 2. Correr el proceso ETL
-        excel_path = os.path.join(settings.BASE_DIR.parent, 'datasets', 'dataset_clinico_etl_1800_registros.xlsx')
-        
-        if not os.path.exists(excel_path):
-            self.stdout.write(self.style.ERROR(f'No se encontró el dataset en {excel_path}'))
+        if skip_if_loaded and PacienteClinico.objects.exists() and not force:
+            self.stdout.write(self.style.WARNING('Ya existen pacientes cargados; se omite el ETL.'))
+            self._train_if_possible()
+            self.stdout.write(self.style.SUCCESS('Seeding finalizado sin recargar datos.'))
             return
 
-        self.stdout.write(self.style.WARNING('Ejecutando ETL (Extracción y Transformación)...'))
+        excel_path = os.path.join(settings.BASE_DIR.parent, 'datasets', 'dataset_clinico_etl_1800_registros.xlsx')
+        if not os.path.exists(excel_path):
+            self.stdout.write(self.style.ERROR(f'No se encontro el dataset en {excel_path}'))
+            return
+
+        self.stdout.write(self.style.WARNING('Ejecutando ETL...'))
         try:
             df, start_time, total_rows = ETLEngine.extract(excel_path, file_type='excel')
             df_clean, duplicados = ETLEngine.transform(df)
-            
-            # Limpiar datos previos
-            PacienteClinico.objects.all().delete()
-            RegistroETL.objects.all().delete()
-            self.stdout.write(self.style.SUCCESS('Se limpiaron los registros previos de la base de datos.'))
-            
+
+            if force or not PacienteClinico.objects.exists():
+                PacienteClinico.objects.all().delete()
+                RegistroETL.objects.all().delete()
+                self.stdout.write(self.style.SUCCESS('Se limpiaron registros previos.'))
+
             log_etl = ETLEngine.load(
                 df_clean=df_clean,
                 usuario=admin_user,
                 start_time=start_time,
                 source_name='dataset_clinico_etl_1800_registros.xlsx',
                 total_rows=total_rows,
-                duplicados=duplicados
+                duplicados=duplicados,
             )
             self.stdout.write(self.style.SUCCESS(f'ETL completado. Registros insertados: {log_etl.registros_limpios}'))
-        except Exception as e:
-            self.stdout.write(self.style.ERROR(f'Error durante el ETL: {str(e)}'))
+        except Exception as exc:
+            self.stdout.write(self.style.ERROR(f'Error durante el ETL: {exc}'))
             return
 
-        # 3. Entrenar el modelo de ML
-        self.stdout.write(self.style.WARNING('Entrenando el modelo de Machine Learning (Random Forest)...'))
+        self._train_if_possible()
+        self.stdout.write(self.style.SUCCESS('Seeding completado con exito.'))
+
+    def _crear_usuarios_base(self):
+        User = get_user_model()
+        usuarios_base = [
+            {
+                'username': 'admin',
+                'email': 'admin@healthanalytics.com',
+                'password': 'admin123',
+                'rol': 'administrador',
+                'is_superuser': True,
+                'is_staff': True,
+            },
+            {
+                'username': 'analista',
+                'email': 'analista@healthanalytics.com',
+                'password': 'admin123',
+                'rol': 'analista',
+                'is_superuser': False,
+                'is_staff': False,
+            },
+            {
+                'username': 'medico',
+                'email': 'medico@healthanalytics.com',
+                'password': 'admin123',
+                'rol': 'medico',
+                'is_superuser': False,
+                'is_staff': False,
+            },
+        ]
+
+        creados = []
+        for data in usuarios_base:
+            user, created = User.objects.get_or_create(
+                username=data['username'],
+                defaults={
+                    'email': data['email'],
+                    'rol': data['rol'],
+                    'is_staff': data['is_staff'],
+                    'is_superuser': data['is_superuser'],
+                },
+            )
+            if created:
+                user.set_password(data['password'])
+                user.save()
+                creados.append(f"{data['username']} / {data['password']}")
+
+        if creados:
+            self.stdout.write(self.style.SUCCESS('Usuarios creados: ' + ', '.join(creados)))
+        else:
+            self.stdout.write(self.style.SUCCESS('Usuarios base ya existen.'))
+
+        return User.objects.get(username='admin')
+
+    def _train_if_possible(self):
+        self.stdout.write(self.style.WARNING('Entrenando modelo de Machine Learning...'))
         try:
             metrics = RiskPredictor.entrenar_modelo()
             self.stdout.write(self.style.SUCCESS(f"Modelo entrenado. Accuracy: {metrics['accuracy']}"))
-        except Exception as e:
-            self.stdout.write(self.style.ERROR(f'Error al entrenar el modelo: {str(e)}'))
-
-        self.stdout.write(self.style.SUCCESS('¡Seeding completado con éxito!'))
+        except Exception as exc:
+            self.stdout.write(self.style.ERROR(f'Error al entrenar el modelo: {exc}'))

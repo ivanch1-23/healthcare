@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: healthcare-etl-platform
+    runtime: python
+    rootDir: healthcare-etl-platform
+    plan: free
+    buildCommand: pip install -r backend/requirements.txt && python backend/manage.py collectstatic --noinput
+    startCommand: python backend/manage.py migrate && python backend/manage.py seed --skip-if-loaded && gunicorn --chdir backend config.wsgi:application --bind 0.0.0.0:$PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.3
+      - key: DEBUG
+        value: False
+      - key: ALLOWED_HOSTS
+        value: .onrender.com
+      - key: SECRET_KEY
+        generateValue: true
+      - key: CSRF_TRUSTED_ORIGINS
+        sync: false
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
+      - key: DATABASE_URL
+        fromDatabase:
+          name: healthcare-etl-db
+          property: connectionString
+
+databases:
+  - name: healthcare-etl-db
+    plan: free

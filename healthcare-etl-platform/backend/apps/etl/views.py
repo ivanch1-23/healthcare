@@ -151,7 +151,7 @@ class PacientesPagination(PageNumberPagination):
 class PacientesListView(APIView):
     """
     GET /api/etl/pacientes/
-    Retorna la lista de pacientes con paginación y filtros por sexo y riesgo.
+    Retorna la lista de pacientes con paginación y filtros por sexo, riesgo y búsqueda por nombre.
     """
     permission_classes = [IsAuthenticated]
 
@@ -165,6 +165,13 @@ class PacientesListView(APIView):
         riesgo = request.query_params.get('riesgo', None)
         if riesgo:
             queryset = queryset.filter(riesgo_enfermedad__iexact=riesgo)
+
+        search = request.query_params.get('search', None)
+        if search:
+            from django.db.models import Q
+            queryset = queryset.filter(
+                Q(nombres__icontains=search) | Q(apellidos__icontains=search)
+            )
             
         paginator = PacientesPagination()
         result_page = paginator.paginate_queryset(queryset, request)

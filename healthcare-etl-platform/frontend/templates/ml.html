@@ -140,6 +140,40 @@
         }
     }
 
+    // Auto-fill form from patient data in sessionStorage (navigated from pacientes page)
+    (function loadPatientData() {
+        const stored = sessionStorage.getItem('paciente_riesgo_data');
+        if (stored) {
+            try {
+                const data = JSON.parse(stored);
+                document.getElementById('p_edad').value = data.edad;
+                document.getElementById('p_imc').value = data.IMC;
+                document.getElementById('p_ps').value = data.presion_sistolica;
+                document.getElementById('p_pd').value = data.presion_diastolica;
+                document.getElementById('p_glucosa').value = data.glucosa;
+                document.getElementById('p_colesterol').value = data.colesterol;
+                document.getElementById('p_fc').value = data.frecuencia_cardiaca;
+                if (data.fumador == 1) {
+                    document.getElementById('p_fumador').checked = true;
+                }
+                // Clear after loading so it doesn't persist on refresh
+                sessionStorage.removeItem('paciente_riesgo_data');
+
+                // Show a notification
+                const formCard = document.querySelector('.card-header.bg-dark');
+                if (formCard) {
+                    const notif = document.createElement('span');
+                    notif.className = 'badge bg-info ms-3';
+                    notif.style.fontSize = '0.75rem';
+                    notif.textContent = '✨ Datos del paciente importados';
+                    formCard.appendChild(notif);
+                }
+            } catch (e) {
+                console.error('Error loading patient data', e);
+            }
+        }
+    })();
+
     document.getElementById('predictForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         

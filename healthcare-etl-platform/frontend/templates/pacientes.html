@@ -12,6 +12,10 @@
     <div class="col-md-8">
         <form id="filterForm" class="row gx-2 gy-2 align-items-center">
             <div class="col-auto">
+                <label class="visually-hidden" for="searchPaciente">Buscar paciente</label>
+                <input type="text" class="form-control" id="searchPaciente" placeholder="🔍 Buscar por nombre o apellido..." style="min-width: 220px;">
+            </div>
+            <div class="col-auto">
                 <label class="visually-hidden" for="filterRiesgo">Riesgo</label>
                 <select class="form-select" id="filterRiesgo">
                     <option value="">Cualquier Riesgo</option>
@@ -58,10 +62,11 @@
                                 <th>Glucosa</th>
                                 <th>Presión (S/D)</th>
                                 <th>Riesgo</th>
+                                <th>Acción</th>
                             </tr>
                         </thead>
                         <tbody id="pacientesTableBody">
-                            <tr><td colspan="8" class="text-center">Cargando...</td></tr>
+                            <tr><td colspan="9" class="text-center">Cargando...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -92,13 +97,25 @@
                 tbody.innerHTML = '';
                 
                 if (data.results.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="8" class="text-center">No se encontraron pacientes.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="9" class="text-center">No se encontraron pacientes.</td></tr>';
                 } else {
                     data.results.forEach(p => {
                         let badgeClass = 'badge-riesgo-bajo';
                         if (p.riesgo_enfermedad === 'Crítico') badgeClass = 'badge-riesgo-critico';
                         else if (p.riesgo_enfermedad === 'Alto') badgeClass = 'badge-riesgo-alto';
                         else if (p.riesgo_enfermedad === 'Medio') badgeClass = 'badge-riesgo-medio';
+
+                        // Store patient data as JSON attribute for the button
+                        const patientData = JSON.stringify({
+                            edad: p.edad,
+                            IMC: p.IMC,
+                            presion_sistolica: p.presion_sistolica,
+                            presion_diastolica: p.presion_diastolica,
+                            glucosa: p.glucosa,
+                            colesterol: p.colesterol,
+                            frecuencia_cardiaca: p.frecuencia_cardiaca,
+                            fumador: p.fumador ? 1 : 0
+                        }).replace(/'/g, "\\'");
 
                         tbody.innerHTML += `
                             <tr>
@@ -110,6 +127,14 @@
                                 <td>${p.glucosa}</td>
                                 <td>${p.presion_sistolica}/${p.presion_diastolica}</td>
                                 <td><span class="badge ${badgeClass}">${p.riesgo_enfermedad}</span></td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary" 
+                                            onclick='calcularRiesgoPaciente(\'${patientData}\')'
+                                            title="Calcular riesgo individual"
+                                            style="border-radius: 8px; font-size: 0.8rem;">
+                                        🧮 Calcular Riesgo
+                                    </button>
+                                </td>
                             </tr>
                         `;
                     });
@@ -118,11 +143,11 @@
                 renderPagination(data.previous, data.next);
                 
             } else {
-                tbody.innerHTML = '<tr><td colspan="8" class="text-center text-danger">Error cargando datos.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="9" class="text-center text-danger">Error cargando datos.</td></tr>';
             }
         } catch (error) {
             console.error(error);
-            tbody.innerHTML = '<tr><td colspan="8" class="text-center text-danger">Error de conexión.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="9" class="text-center text-danger">Error de conexión.</td></tr>';
         }
     }
 
@@ -145,14 +170,33 @@
         e.preventDefault();
         const riesgo = document.getElementById('filterRiesgo').value;
         const sexo = document.getElementById('filterSexo').value;
+        const search = document.getElementById('searchPaciente').value.trim();
         
         const params = new URLSearchParams();
         if (riesgo) params.append('riesgo', riesgo);
         if (sexo) params.append('sexo', sexo);
+        if (search) params.append('search', search);
         
         const url = `${API_BASE}/etl/pacientes/?${params.toString()}`;
         loadPacientes(url);
     });
+
+    // Live search on input (debounced)
+    let searchTimeout;
+    document.getElementById('searchPaciente').addEventListener('input', (e) => {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            document.getElementById('filterForm').dispatchEvent(new Event('submit'));
+        }, 400);
+    });
+
+    // Function to navigate to ML page with patient data
+    function calcularRiesgoPaciente(patientDataJson) {
+        // Store patient data in sessionStorage
+        sessionStorage.setItem('paciente_riesgo_data', patientDataJson);
+        // Navigate to ML page
+        window.location.href = '/ml/';
+    }
 
     document.addEventListener('DOMContentLoaded', () => {
         const rol = localStorage.getItem('rol');

@@ -105,8 +105,8 @@
                         else if (p.riesgo_enfermedad === 'Alto') badgeClass = 'badge-riesgo-alto';
                         else if (p.riesgo_enfermedad === 'Medio') badgeClass = 'badge-riesgo-medio';
 
-                        // Store patient data as JSON attribute for the button
-                        const patientData = JSON.stringify({
+                        // Build patient data JSON and encode for safe HTML attribute
+                        const patientData = encodeURIComponent(JSON.stringify({
                             edad: p.edad,
                             IMC: p.IMC,
                             presion_sistolica: p.presion_sistolica,
@@ -115,7 +115,7 @@
                             colesterol: p.colesterol,
                             frecuencia_cardiaca: p.frecuencia_cardiaca,
                             fumador: p.fumador ? 1 : 0
-                        }).replace(/'/g, "\\'");
+                        }));
 
                         tbody.innerHTML += `
                             <tr>
@@ -128,8 +128,8 @@
                                 <td>${p.presion_sistolica}/${p.presion_diastolica}</td>
                                 <td><span class="badge ${badgeClass}">${p.riesgo_enfermedad}</span></td>
                                 <td>
-                                    <button class="btn btn-sm btn-outline-primary" 
-                                            onclick='calcularRiesgoPaciente(\'${patientData}\')'
+                                    <button class="btn btn-sm btn-outline-primary btn-calcular-riesgo" 
+                                            data-paciente="${patientData}"
                                             title="Calcular riesgo individual"
                                             style="border-radius: 8px; font-size: 0.8rem;">
                                         🧮 Calcular Riesgo
@@ -190,13 +190,18 @@
         }, 400);
     });
 
-    // Function to navigate to ML page with patient data
-    function calcularRiesgoPaciente(patientDataJson) {
-        // Store patient data in sessionStorage
-        sessionStorage.setItem('paciente_riesgo_data', patientDataJson);
-        // Navigate to ML page
-        window.location.href = '/ml/';
-    }
+    // Event delegation: detect clicks on "Calcular Riesgo" buttons
+    document.getElementById('pacientesTableBody').addEventListener('click', function(e) {
+        const btn = e.target.closest('.btn-calcular-riesgo');
+        if (btn) {
+            const encoded = btn.getAttribute('data-paciente');
+            if (encoded) {
+                const jsonData = decodeURIComponent(encoded);
+                sessionStorage.setItem('paciente_riesgo_data', jsonData);
+                window.location.href = '/ml/';
+            }
+        }
+    });
 
     document.addEventListener('DOMContentLoaded', () => {
         const rol = localStorage.getItem('rol');
